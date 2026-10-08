@@ -1,0 +1,6 @@
+{
+  "name": "AEILORIA — Freedom V1 Transformation Test",
+  "description": "Controlled experimental test chamber for the z = F(x, y) transformation and persistence testing of V1 Compersion.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
