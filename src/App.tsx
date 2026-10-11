@@ -46,11 +46,16 @@ export default function App() {
     }));
   };
 
-  const handleCopyJSON = () => {
+  const handleCopyJSON = async () => {
     const jsonStr = JSON.stringify(experimentRun.outputJSON, null, 2);
-    navigator.clipboard.writeText(jsonStr);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+
+    try {
+      await navigator.clipboard.writeText(jsonStr);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
   };
 
   const handleDownloadJSON = () => {

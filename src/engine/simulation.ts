@@ -200,14 +200,17 @@ function stepEngine(
   const n = updated.length;
 
   const pairsToInteract = Math.min(n, Math.max(2, Math.floor(n / 2)));
-  const visitedPairs = new Set<string>();
+  // Encode unordered index pairs as integers to avoid allocating strings in the hot loop.
+  const visitedPairs = new Set<number>();
 
   for (let k = 0; k < pairsToInteract; k++) {
     const idxA = Math.floor(prng.next() * n);
     let idxB = Math.floor(prng.next() * n);
     if (idxA === idxB) idxB = (idxB + 1) % n;
 
-    const pairKey = idxA < idxB ? `${idxA}-${idxB}` : `${idxB}-${idxA}`;
+    const lowIndex = Math.min(idxA, idxB);
+    const highIndex = Math.max(idxA, idxB);
+    const pairKey = lowIndex * n + highIndex;
     if (visitedPairs.has(pairKey)) continue;
     visitedPairs.add(pairKey);
 
