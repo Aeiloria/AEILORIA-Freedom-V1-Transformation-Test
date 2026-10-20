@@ -91,6 +91,46 @@ export type PersistenceClassification =
   | 'ADAPTED'
   | 'SELF-SUSTAINING CANDIDATE';
 
+export type BondStateClassification =
+  | 'SELF_SUSTAINING'
+  | 'FORCED'
+  | 'ADAPTED'
+  | 'BASELINE';
+
+export interface CompersionTelemetry {
+  b_gain_verified: boolean;
+  b_gain_ratio: number;
+  a_response_positive: boolean;
+  a_response_ratio: number;
+  non_deprivation: boolean;
+  non_deprivation_ratio: number;
+  non_capture: boolean;
+  non_capture_ratio: number;
+  distinctness_maintained: boolean;
+  distinctness_ratio: number;
+  force_dependence_index: number;
+  active_interactions_count: number;
+  instantaneous_delta_f: number;
+  instantaneous_delta_v: number;
+}
+
+export type ExperimentStage = 'STAGE_A' | 'STAGE_B' | 'STAGE_C' | 'STAGE_D';
+
+export interface ScenarioPreset {
+  id: string;
+  name: string;
+  description: string;
+  classificationTarget: BondStateClassification;
+  config: {
+    appliedY: number;
+    externalForcing: number;
+    etherCoupling: number;
+    fireExcitation: number;
+    initialFreedomMean: number;
+    initialViceMean: number;
+  };
+}
+
 export interface MultiDoseResult {
   y_value: number;
   z_mean_freedom: number;
@@ -134,7 +174,7 @@ export interface ExperimentOutputJSON {
     applied_y_value: number;
     external_forcing_level: number;
     ether_coupling: number;
-    fire_excitation: number;
+    fireExcitation: number;
   };
   elemental_framework: {
     ether_permeability: number;
@@ -219,4 +259,11 @@ export interface FullExperimentRun {
   allInteractions: InteractionRecord[];
   multiDoseResults: MultiDoseResult[];
   primaryQuestions: PrimaryQuestionsAnswers;
+  // Snapshot states across the 4 stages for interactive playback and node inspection
+  stageSnapshots: {
+    stageA: SystemAggregateState;
+    stageB: SystemAggregateState;
+    stageC: SystemAggregateState;
+    stageD: SystemAggregateState;
+  };
 }

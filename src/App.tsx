@@ -19,6 +19,7 @@ import { StateSpacePlot } from './components/StateSpacePlot';
 import { TrajectoryPlot } from './components/TrajectoryPlot';
 import { ObservablesGrid } from './components/ObservablesGrid';
 import { PersistenceClassificationCard } from './components/PersistenceClassificationCard';
+import { ElementalInfluenceAnalysis } from './components/ElementalInfluenceAnalysis';
 import { MultiDoseTable } from './components/MultiDoseTable';
 import { InteractionLog } from './components/InteractionLog';
 import { PrimaryQuestionsView } from './components/PrimaryQuestionsView';
@@ -107,6 +108,14 @@ export default function App() {
               distZPrimeToX={outputJSON.classification.metrics.distance_z_prime_to_x}
               distZPrimeToZ={outputJSON.classification.metrics.distance_z_prime_to_z}
               distZToControl={outputJSON.control_comparison.distance_z_to_z_control}
+              stateX={outputJSON.baseline.state_x}
+              stateZ={outputJSON.outcome_z.state_z}
+              stateZPrime={outputJSON.removal_test.state_z_prime}
+              appliedY={config.appliedY}
+            />
+
+            {/* Elemental Influence Analysis: Ether & Fire Scatter Correlation to z-Norm */}
+            <ElementalInfluenceAnalysis
               stateX={outputJSON.baseline.state_x}
               stateZ={outputJSON.outcome_z.state_z}
               stateZPrime={outputJSON.removal_test.state_z_prime}

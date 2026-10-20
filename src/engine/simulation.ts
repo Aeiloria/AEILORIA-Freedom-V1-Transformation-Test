@@ -16,6 +16,10 @@ import {
   PrimaryQuestionsAnswers,
   ExperimentOutputJSON,
   FullExperimentRun,
+  BondStateClassification,
+  CompersionTelemetry,
+  ExperimentStage,
+  ScenarioPreset,
 } from '../types/experiment';
 
 /**
@@ -537,6 +541,7 @@ export function runCompleteExperiment(config: SimulationConfig): FullExperimentR
   // STAGE B & C: APPLY y = V1 Compersion -> Produce z = F(x, y)
   const prngB = new PRNG(config.seed + 101);
   const stageBInteractions: InteractionRecord[] = [];
+  let stateBMid = stateX;
 
   for (let step = 1; step <= config.timestepsPerStage; step++) {
     const t = config.timestepsPerStage + step;
@@ -550,6 +555,9 @@ export function runCompleteExperiment(config: SimulationConfig): FullExperimentR
       true
     );
     const agg = computeSystemState(t, currentAgents, config.externalForcing);
+    if (step === Math.max(1, Math.floor(config.timestepsPerStage / 2))) {
+      stateBMid = agg;
+    }
     history.push({
       timestep: t,
       source_phase: 'STAGE_B',
@@ -751,6 +759,12 @@ export function runCompleteExperiment(config: SimulationConfig): FullExperimentR
     allInteractions: stageBInteractions,
     multiDoseResults,
     primaryQuestions,
+    stageSnapshots: {
+      stageA: stateX,
+      stageB: stateBMid,
+      stageC: stateZ,
+      stageD: stateZPrime,
+    },
   };
 }
 
@@ -817,4 +831,202 @@ export function runMultiDoseBatch(config: SimulationConfig): MultiDoseResult[] {
   }
 
   return results;
+}
+
+/**
+ * Standard experimental scenario presets for controlled laboratory verification.
+ */
+export const SCENARIO_PRESETS: ScenarioPreset[] = [
+  {
+    id: 'self_sustaining',
+    name: 'Authentic Non-Coercive Bond',
+    description: 'High test influence y with high ether permeability and minimal forcing establishes an authentic iridescent cyan-white crystal lattice.',
+    classificationTarget: 'SELF_SUSTAINING',
+    config: {
+      appliedY: 0.85,
+      externalForcing: 0.10,
+      etherCoupling: 0.85,
+      fireExcitation: 0.35,
+      initialFreedomMean: 0.58,
+      initialViceMean: 0.30,
+    },
+  },
+  {
+    id: 'forced_coercive',
+    name: 'Forced Coercive Coupling',
+    description: 'Severe external forcing overrides autonomous agency. Collapses into a dashed grey trace when test influence y is removed.',
+    classificationTarget: 'FORCED',
+    config: {
+      appliedY: 0.40,
+      externalForcing: 0.82,
+      etherCoupling: 0.20,
+      fireExcitation: 0.75,
+      initialFreedomMean: 0.30,
+      initialViceMean: 0.80,
+    },
+  },
+  {
+    id: 'dissipative_adapted',
+    name: 'Dissipative Adaptation',
+    description: 'Metastable transformation: State diverges from baseline x and settles into an adapted configuration departing from peak z.',
+    classificationTarget: 'ADAPTED',
+    config: {
+      appliedY: 0.52,
+      externalForcing: 0.32,
+      etherCoupling: 0.58,
+      fireExcitation: 0.62,
+      initialFreedomMean: 0.46,
+      initialViceMean: 0.50,
+    },
+  },
+  {
+    id: 'baseline_quiescent',
+    name: 'Sub-Threshold Baseline',
+    description: 'Zero/negligible V1 exposure (y=0.08) under unforced conditions; trajectory remains bounded within baseline state basin.',
+    classificationTarget: 'BASELINE',
+    config: {
+      appliedY: 0.08,
+      externalForcing: 0.10,
+      etherCoupling: 0.40,
+      fireExcitation: 0.20,
+      initialFreedomMean: 0.42,
+      initialViceMean: 0.58,
+    },
+  },
+  {
+    id: 'high_ether_transmutation',
+    name: 'High-Ether Field Transmutation',
+    description: 'Near-maximal ether field permeability (0.95) maximizes non-deprivation and distinctness across all pairwise interactions.',
+    classificationTarget: 'SELF_SUSTAINING',
+    config: {
+      appliedY: 0.78,
+      externalForcing: 0.15,
+      etherCoupling: 0.95,
+      fireExcitation: 0.48,
+      initialFreedomMean: 0.62,
+      initialViceMean: 0.28,
+    },
+  },
+  {
+    id: 'anomaly_divergence',
+    name: 'Anomalous Divergence Stress Test',
+    description: 'Elevated vice combined with abrupt forcing sparks suppression spikes and anomalous state reversals for laboratory verification.',
+    classificationTarget: 'FORCED',
+    config: {
+      appliedY: 0.70,
+      externalForcing: 0.68,
+      etherCoupling: 0.28,
+      fireExcitation: 0.80,
+      initialFreedomMean: 0.35,
+      initialViceMean: 0.75,
+    },
+  },
+];
+
+/**
+ * Resolves state classification strictly as:
+ * SELF_SUSTAINING, FORCED, ADAPTED, or BASELINE.
+ */
+export function resolveBondStateClassification(
+  stage: ExperimentStage,
+  persistenceCategory: PersistenceClassification,
+  forcing: number,
+  appliedY: number
+): BondStateClassification {
+  if (stage === 'STAGE_A' || appliedY < 0.12) {
+    return 'BASELINE';
+  }
+  if (forcing > 0.62 || persistenceCategory === 'EXTERNALLY DEPENDENT') {
+    return 'FORCED';
+  }
+  if (persistenceCategory === 'SELF-SUSTAINING CANDIDATE') {
+    return 'SELF_SUSTAINING';
+  }
+  return 'ADAPTED';
+}
+
+/**
+ * Real-time telemetry tracking for all five Compersion observables:
+ * 1. b_gain_verified
+ * 2. a_response_positive
+ * 3. non_deprivation
+ * 4. non_capture
+ * 5. distinctness_maintained
+ */
+export function computeTelemetryAtStep(
+  currentTimestep: number,
+  history: StateTransitionRecord[],
+  interactions: InteractionRecord[],
+  forcing: number,
+  appliedY: number
+): CompersionTelemetry {
+  const pastInteractions = interactions.filter(i => i.timestep <= currentTimestep);
+  const total = pastInteractions.length;
+
+  if (total === 0) {
+    // Baseline state before Stage B interactions
+    return {
+      b_gain_verified: false,
+      b_gain_ratio: 0,
+      a_response_positive: false,
+      a_response_ratio: 0,
+      non_deprivation: true,
+      non_deprivation_ratio: 1.0,
+      non_capture: true,
+      non_capture_ratio: 1.0,
+      distinctness_maintained: true,
+      distinctness_ratio: 1.0,
+      force_dependence_index: Number(forcing.toFixed(3)),
+      active_interactions_count: 0,
+      instantaneous_delta_f: 0,
+      instantaneous_delta_v: 0,
+    };
+  }
+
+  let countBGain = 0;
+  let countAResp = 0;
+  let countNonDep = 0;
+  let countNonCap = 0;
+  let countDist = 0;
+
+  for (const i of pastInteractions) {
+    if (i.b_gain) countBGain++;
+    if (i.a_response) countAResp++;
+    if (i.non_deprivation) countNonDep++;
+    if (i.non_capture) countNonCap++;
+    if (i.distinctness) countDist++;
+  }
+
+  // Calculate instantaneous gradient from history
+  const currRecord = history.find(h => h.timestep === currentTimestep);
+  const prevRecord = history.find(h => h.timestep === currentTimestep - 1);
+  const instDeltaF = currRecord && prevRecord
+    ? Number((currRecord.mean_freedom_state - prevRecord.mean_freedom_state).toFixed(4))
+    : 0;
+  const instDeltaV = currRecord && prevRecord
+    ? Number((currRecord.mean_freedoms_vice - prevRecord.mean_freedoms_vice).toFixed(4))
+    : 0;
+
+  const bGainRatio = countBGain / total;
+  const aRespRatio = countAResp / total;
+  const nonDepRatio = countNonDep / total;
+  const nonCapRatio = countNonCap / total;
+  const distRatio = countDist / total;
+
+  return {
+    b_gain_verified: bGainRatio > 0.4,
+    b_gain_ratio: Number(bGainRatio.toFixed(4)),
+    a_response_positive: aRespRatio > 0.25,
+    a_response_ratio: Number(aRespRatio.toFixed(4)),
+    non_deprivation: nonDepRatio > 0.7,
+    non_deprivation_ratio: Number(nonDepRatio.toFixed(4)),
+    non_capture: nonCapRatio > 0.65,
+    non_capture_ratio: Number(nonCapRatio.toFixed(4)),
+    distinctness_maintained: distRatio > 0.85,
+    distinctness_ratio: Number(distRatio.toFixed(4)),
+    force_dependence_index: Number((forcing * (1 - appliedY * 0.3)).toFixed(4)),
+    active_interactions_count: total,
+    instantaneous_delta_f: instDeltaF,
+    instantaneous_delta_v: instDeltaV,
+  };
 }

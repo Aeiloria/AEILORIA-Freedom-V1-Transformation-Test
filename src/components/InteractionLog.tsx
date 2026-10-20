@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { InteractionRecord } from '../types/experiment';
-import { Search, AlertTriangle, CheckCircle2, Flame, Sparkles } from 'lucide-react';
+import { Search, AlertTriangle, CheckCircle2, Flame, Sparkles, Download, Check } from 'lucide-react';
 
 interface InteractionLogProps {
   interactions: InteractionRecord[];
@@ -17,6 +17,7 @@ export const InteractionLog: React.FC<InteractionLogProps> = ({ interactions }) 
   const [filterResponseOnly, setFilterResponseOnly] = useState(false);
   const [filterAnomalyOnly, setFilterAnomalyOnly] = useState(false);
   const [selectedInteraction, setSelectedInteraction] = useState<InteractionRecord | null>(null);
+  const [csvExported, setCsvExported] = useState(false);
 
   const checkIsAnomaly = (rec: InteractionRecord): boolean => {
     return Boolean(
@@ -25,6 +26,96 @@ export const InteractionLog: React.FC<InteractionLogProps> = ({ interactions }) 
       (rec.b_gain && !rec.non_deprivation && !rec.non_capture) ||
       (rec.b_gain && rec.a_response && !rec.non_deprivation)
     );
+  };
+
+  const handleExportCSV = () => {
+    if (!interactions || interactions.length === 0) return;
+
+    const headers = [
+      'interaction_id',
+      'timestep',
+      'agent_a_id',
+      'agent_b_id',
+      'a_freedom_before',
+      'a_vice_before',
+      'b_freedom_before',
+      'b_vice_before',
+      'a_freedom_after',
+      'a_vice_after',
+      'b_freedom_after',
+      'b_vice_after',
+      'b_gain',
+      'a_response',
+      'non_deprivation',
+      'non_suppression',
+      'non_capture',
+      'distinctness',
+      'persistence',
+      'force_dependence',
+      'recurrence_reference',
+      'confidence',
+      'is_anomaly',
+      'anomaly_reason',
+      'flame_intensity',
+      'ether_resonance',
+      'raw_observations',
+    ];
+
+    const escapeCSV = (val: string | number | boolean | null | undefined): string => {
+      if (val === null || val === undefined) return '';
+      const str = String(val);
+      if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const rows = interactions.map((r) => {
+      const isAnomaly = checkIsAnomaly(r);
+      return [
+        escapeCSV(r.interaction_id),
+        escapeCSV(r.timestep),
+        escapeCSV(r.agent_a_id),
+        escapeCSV(r.agent_b_id),
+        escapeCSV(r.a_state_before.freedom_state),
+        escapeCSV(r.a_state_before.freedoms_vice),
+        escapeCSV(r.b_state_before.freedom_state),
+        escapeCSV(r.b_state_before.freedoms_vice),
+        escapeCSV(r.a_state_after.freedom_state),
+        escapeCSV(r.a_state_after.freedoms_vice),
+        escapeCSV(r.b_state_after.freedom_state),
+        escapeCSV(r.b_state_after.freedoms_vice),
+        escapeCSV(r.b_gain),
+        escapeCSV(r.a_response),
+        escapeCSV(r.non_deprivation),
+        escapeCSV(r.non_suppression),
+        escapeCSV(r.non_capture),
+        escapeCSV(r.distinctness),
+        escapeCSV(r.persistence),
+        escapeCSV(r.force_dependence),
+        escapeCSV(r.recurrence_reference || ''),
+        escapeCSV(r.confidence),
+        escapeCSV(isAnomaly),
+        escapeCSV(r.anomaly_reason || (isAnomaly ? 'ANOMALOUS_DIVERGENCE' : 'NOMINAL')),
+        escapeCSV(r.elemental_flame_intensity ?? ''),
+        escapeCSV(r.elemental_ether_resonance ?? ''),
+        escapeCSV(r.raw_observations),
+      ].join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `simulation_interaction_history_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setCsvExported(true);
+    setTimeout(() => setCsvExported(false), 2000);
   };
 
   const anomalyCount = interactions.filter(checkIsAnomaly).length;
